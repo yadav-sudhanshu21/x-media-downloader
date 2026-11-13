@@ -22,6 +22,15 @@ function normalizeImageBaseUrl(rawUrl) {
   return rawUrl.split('?')[0].replace(/\.(jpg|jpeg|png|webp)$/i, '');
 }
 
+// Compute X Syndication Token so single-video posts return all MP4 bitrate variants
+function computeSyndicationToken(idStr) {
+  try {
+    return ((Number(idStr) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '');
+  } catch {
+    return 'a';
+  }
+}
+
 export default function App() {
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,9 +51,11 @@ export default function App() {
   const fetchLiveXMedia = async (tweetId) => {
     let vxData = null;
     let syndicationData = null;
+    const synToken = computeSyndicationToken(tweetId);
 
-    const [vxRes, synRes] = await Promise.allSettled([
+    const [vxRes, synRes, synFallbackRes] = await Promise.allSettled([
       fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`),
+      fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${synToken}`),
       fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=a`)
     ]);
 
@@ -64,6 +75,14 @@ export default function App() {
       }
     }
 
+    if (!syndicationData && synFallbackRes.status === 'fulfilled' && synFallbackRes.value.ok) {
+      try {
+        syndicationData = await synFallbackRes.value.json();
+      } catch (e) {
+        // fallback
+      }
+    }
+
     if (!vxData && !syndicationData) {
       throw new Error(
         'Could not reach this X (Twitter) post. Ensure the post is public and contains video or photo media.'
@@ -71,7 +90,10 @@ export default function App() {
     }
 
     const mediaItems = [];
-    const synMediaList = syndicationData?.mediaDetails || [];
+    const synMediaList =
+      syndicationData?.mediaDetails ||
+      (syndicationData?.video ? [{ type: 'video', video_info: syndicationData.video }] : []) ||
+      (syndicationData?.photos ? syndicationData.photos.map((p) => ({ type: 'photo', media_url_https: p.url })) : []);
     const vxMediaList = vxData?.media_extended || [];
     const totalCount = Math.max(synMediaList.length, vxMediaList.length);
 
@@ -82,18 +104,27 @@ export default function App() {
 
       if (rawType === 'video' || rawType === 'animated_gif' || rawType === 'gif') {
         const isGif = rawType === 'animated_gif' || rawType === 'gif';
-        const variants = synItem?.video_info?.variants || [];
-        const mp4Variants = variants
-          .filter((v) => v.content_type === 'video/mp4' && v.url)
+        const rawVariants =
+          synItem?.video_info?.variants ||
+          syndicationData?.video?.variants ||
+          vxItem?.variants ||
+          [];
+
+        const mp4Variants = rawVariants
+          .filter((v) => (v.content_type === 'video/mp4' || v.type === 'video/mp4' || (v.url && v.url.includes('.mp4'))) && v.url)
           .map((v, idx) => {
             const resMatch = v.url.match(/\/(\d+x\d+)\//);
-            const resolution = resMatch ? resMatch[1] : idx === 0 ? '1920x1080' : '1280x720';
-            const height = resolution.includes('x') ? resolution.split('x')[1] : 'HD';
-            const bitrateKbps = v.bitrate ? Math.round(v.bitrate / 1000) : 2500;
+            const resolution = resMatch ? resMatch[1] : idx === 0 ? '1080p HD' : idx === 1 ? '720p HD' : '480p SD';
+            const dims = resolution.includes('x') ? resolution.split('x').map(Number) : [];
+            const shortSide = dims.length === 2 ? Math.min(dims[0], dims[1]) : null;
+            const qualityName = shortSide ? `${shortSide}p` : resolution;
+            const bitrateKbps = v.bitrate ? Math.round(v.bitrate / 1000) : (4 - idx) * 1000;
 
             return {
               id: `vid-${i}-${idx}`,
-              label: isGif ? 'Download GIF (MP4)' : `Download ${height}p (${resolution})`,
+              label: isGif
+                ? 'Download GIF (MP4)'
+                : `Download ${qualityName} Video (${resolution})`,
               resolution,
               bitrate: bitrateKbps,
               ext: 'MP4',
@@ -102,22 +133,31 @@ export default function App() {
           })
           .sort((a, b) => b.bitrate - a.bitrate);
 
-        if (mp4Variants.length === 0 && vxItem?.url) {
-          mp4Variants.push({
-            id: `vid-${i}-0`,
-            label: isGif ? 'Download GIF (MP4)' : 'Download HD Video (MP4)',
-            resolution: vxItem.size ? `${vxItem.size.width}x${vxItem.size.height}` : '1080p',
-            bitrate: 4200,
+        if (vxItem?.url && vxItem.url.includes('.mp4')) {
+          const vxResMatch = vxItem.url.match(/\/(\d+x\d+)\//);
+          const vxResolution =
+            vxResMatch?.[1] ||
+            (vxItem.size?.width && vxItem.size?.height ? `${vxItem.size.width}x${vxItem.size.height}` : '1080p HD');
+          const vxDims = vxResolution.includes('x') ? vxResolution.split('x').map(Number) : [];
+          const vxShortSide = vxDims.length === 2 ? Math.min(vxDims[0], vxDims[1]) : 'HD';
+
+          mp4Variants.unshift({
+            id: `vid-vx-${i}`,
+            label: isGif ? 'Download GIF (MP4)' : `Download ${vxShortSide}p Max Quality (${vxResolution})`,
+            resolution: vxResolution,
+            bitrate: 9999,
             ext: 'MP4',
             url: vxItem.url
           });
         }
 
         const uniqueQualities = [];
-        const seenUrls = new Set();
+        const seenRes = new Set();
         mp4Variants.forEach((q, idx) => {
-          if (!seenUrls.has(q.url)) {
-            seenUrls.add(q.url);
+          const cleanUrl = q.url.split('?')[0];
+          const dedupeKey = `${q.resolution}-${cleanUrl}`;
+          if (!seenRes.has(dedupeKey)) {
+            seenRes.add(dedupeKey);
             uniqueQualities.push({
               ...q,
               badge: idx === 0 ? 'BEST QUALITY' : null
@@ -125,13 +165,28 @@ export default function App() {
           }
         });
 
+        // Also include High-Resolution Video Thumbnail / Cover Photo option
+        const thumbRaw =
+          synItem?.media_url_https ||
+          syndicationData?.video?.poster ||
+          vxItem?.thumbnail_url ||
+          '';
+        if (thumbRaw) {
+          const baseThumb = normalizeImageBaseUrl(thumbRaw);
+          uniqueQualities.push({
+            id: `vid-thumb-${i}-orig`,
+            label: 'Download Video Cover Thumbnail (HD JPG)',
+            resolution: 'Original Cover',
+            ext: 'JPG',
+            badge: null,
+            url: baseThumb.includes('pbs.twimg.com') ? `${baseThumb}?format=jpg&name=orig` : thumbRaw
+          });
+        }
+
         mediaItems.push({
           index: i,
           type: isGif ? 'gif' : 'video',
-          thumbnail:
-            synItem?.media_url_https ||
-            vxItem?.thumbnail_url ||
-            '',
+          thumbnail: thumbRaw,
           previewUrl: uniqueQualities[0]?.url || vxItem?.url,
           qualities: uniqueQualities
         });
@@ -212,7 +267,6 @@ export default function App() {
     try {
       const data = await fetchLiveXMedia(tweetId);
       setResult(data);
-      setUrlInput('');
       setTimeout(() => {
         resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
@@ -417,6 +471,21 @@ export default function App() {
               placeholder="Paste X (Twitter) link here..."
               className="w-full bg-transparent px-5 py-2.5 text-sm text-[#E8DCC4] placeholder-[#E8DCC4]/45 focus:outline-none"
             />
+
+            {urlInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setUrlInput('');
+                  setError('');
+                  setResult(null);
+                  inputRef.current?.focus();
+                }}
+                className="px-3 py-1.5 mr-1 rounded-full text-xs font-semibold text-[#E8DCC4]/75 hover:text-[#E8DCC4] hover:bg-[#E8DCC4]/10 transition cursor-pointer shrink-0"
+              >
+                Clear
+              </button>
+            )}
 
             {loading ? (
               <div className="shrink-0 px-6 py-3 rounded-full bg-[#8B5CF6] text-white font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-md">
