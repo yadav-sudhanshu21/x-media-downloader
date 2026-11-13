@@ -46,17 +46,21 @@ export default function App() {
   const inputRef = useRef(null);
 
   // ==========================================
-  // UNCHANGED WORKING X / TWITTER ENGINE
+  // MULTI-SOURCE X / TWITTER ENGINE (FXTwitter + Syndication + VXTwitter)
+  // Extracts all video resolutions (e.g. 720x1280, 480x852, 320x568)
   // ==========================================
   const fetchLiveXMedia = async (tweetId) => {
     let vxData = null;
+    let fxData = null;
     let syndicationData = null;
     const synToken = computeSyndicationToken(tweetId);
+    const synTargetUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${synToken}`;
 
-    const [vxRes, synRes, synFallbackRes] = await Promise.allSettled([
+    const [vxRes, fxRes, synDirectRes, synProxyRes] = await Promise.allSettled([
       fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`),
-      fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${synToken}`),
-      fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=a`)
+      fetch(`https://api.fxtwitter.com/status/${tweetId}`),
+      fetch(synTargetUrl),
+      fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(synTargetUrl)}`)
     ]);
 
     if (vxRes.status === 'fulfilled' && vxRes.value.ok) {
@@ -67,23 +71,32 @@ export default function App() {
       }
     }
 
-    if (synRes.status === 'fulfilled' && synRes.value.ok) {
+    if (fxRes.status === 'fulfilled' && fxRes.value.ok) {
       try {
-        syndicationData = await synRes.value.json();
+        const parsedFx = await fxRes.value.json();
+        fxData = parsedFx?.tweet || null;
       } catch (e) {
         // fallback
       }
     }
 
-    if (!syndicationData && synFallbackRes.status === 'fulfilled' && synFallbackRes.value.ok) {
+    if (synDirectRes.status === 'fulfilled' && synDirectRes.value.ok) {
       try {
-        syndicationData = await synFallbackRes.value.json();
+        syndicationData = await synDirectRes.value.json();
       } catch (e) {
         // fallback
       }
     }
 
-    if (!vxData && !syndicationData) {
+    if (!syndicationData && synProxyRes.status === 'fulfilled' && synProxyRes.value.ok) {
+      try {
+        syndicationData = await synProxyRes.value.json();
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    if (!vxData && !fxData && !syndicationData) {
       throw new Error(
         'Could not reach this X (Twitter) post. Ensure the post is public and contains video or photo media.'
       );
@@ -95,106 +108,115 @@ export default function App() {
       (syndicationData?.video ? [{ type: 'video', video_info: syndicationData.video }] : []) ||
       (syndicationData?.photos ? syndicationData.photos.map((p) => ({ type: 'photo', media_url_https: p.url })) : []);
     const vxMediaList = vxData?.media_extended || [];
-    const totalCount = Math.max(synMediaList.length, vxMediaList.length);
+    const fxMediaList = fxData?.media?.all || fxData?.media?.videos || fxData?.media?.photos || [];
+    const totalCount = Math.max(synMediaList.length, vxMediaList.length, fxMediaList.length);
 
     for (let i = 0; i < totalCount; i++) {
       const synItem = synMediaList[i];
       const vxItem = vxMediaList[i];
-      const rawType = synItem?.type || vxItem?.type || 'photo';
+      const fxItem = fxMediaList[i];
+      const rawType = synItem?.type || fxItem?.type || vxItem?.type || 'photo';
 
       if (rawType === 'video' || rawType === 'animated_gif' || rawType === 'gif') {
         const isGif = rawType === 'animated_gif' || rawType === 'gif';
-        const rawVariants =
-          synItem?.video_info?.variants ||
-          syndicationData?.video?.variants ||
-          vxItem?.variants ||
-          [];
 
-        const mp4Variants = rawVariants
-          .filter((v) => (v.content_type === 'video/mp4' || v.type === 'video/mp4' || (v.url && v.url.includes('.mp4'))) && v.url)
+        // Collect all variants from Syndication, FXTwitter, and VXTwitter
+        const combinedRawVariants = [
+          ...(synItem?.video_info?.variants || []),
+          ...(syndicationData?.video?.variants || []),
+          ...(fxItem?.variants || []),
+          ...( fxItem?.formats || []),
+          ...(vxItem?.variants || [])
+        ];
+
+        if (fxItem?.url && fxItem.url.includes('.mp4')) {
+          combinedRawVariants.push({
+            content_type: 'video/mp4',
+            url: fxItem.url,
+            bitrate: fxItem.bitrate || 8000000
+          });
+        }
+
+        if (vxItem?.url && vxItem.url.includes('.mp4')) {
+          combinedRawVariants.push({
+            content_type: 'video/mp4',
+            url: vxItem.url,
+            bitrate: 8500000
+          });
+        }
+
+        const mp4Variants = combinedRawVariants
+          .filter(
+            (v) =>
+              v?.url &&
+              (v.content_type === 'video/mp4' ||
+                v.type === 'video/mp4' ||
+                v.container === 'mp4' ||
+                v.url.includes('.mp4'))
+          )
           .map((v, idx) => {
             const resMatch = v.url.match(/\/(\d+x\d+)\//);
-            const resolution = resMatch ? resMatch[1] : idx === 0 ? '1080p HD' : idx === 1 ? '720p HD' : '480p SD';
-            const dims = resolution.includes('x') ? resolution.split('x').map(Number) : [];
-            const shortSide = dims.length === 2 ? Math.min(dims[0], dims[1]) : null;
-            const qualityName = shortSide ? `${shortSide}p` : resolution;
-            const bitrateKbps = v.bitrate ? Math.round(v.bitrate / 1000) : (4 - idx) * 1000;
+            const fallbackRes =
+              fxItem?.width && fxItem?.height
+                ? `${fxItem.width}x${fxItem.height}`
+                : vxItem?.size?.width && vxItem?.size?.height
+                ? `${vxItem.size.width}x${vxItem.size.height}`
+                : '720x1280';
+            const resolution = resMatch ? resMatch[1] : fallbackRes;
+
+            // Calculate pixel count so sorting orders 720x1280 -> 480x852 -> 320x568
+            const dims = resolution.includes('x') ? resolution.split('x').map(Number) : [0, 0];
+            const pixelArea = (dims[0] || 0) * (dims[1] || 0);
+            const bitrateKbps = v.bitrate ? Math.round(v.bitrate / 1000) : Math.round(pixelArea / 500) || (4 - idx) * 500;
 
             return {
               id: `vid-${i}-${idx}`,
               label: isGif
-                ? 'Download GIF (MP4)'
-                : `Download ${qualityName} Video (${resolution})`,
+                ? 'Download GIF: mp4'
+                : `Download ${resolution}: mp4`,
               resolution,
+              pixelArea,
               bitrate: bitrateKbps,
               ext: 'MP4',
               url: v.url
             };
           })
-          .sort((a, b) => b.bitrate - a.bitrate);
+          .sort((a, b) => (b.pixelArea - a.pixelArea) || (b.bitrate - a.bitrate));
 
-        if (vxItem?.url && vxItem.url.includes('.mp4')) {
-          const vxResMatch = vxItem.url.match(/\/(\d+x\d+)\//);
-          const vxResolution =
-            vxResMatch?.[1] ||
-            (vxItem.size?.width && vxItem.size?.height ? `${vxItem.size.width}x${vxItem.size.height}` : '1080p HD');
-          const vxDims = vxResolution.includes('x') ? vxResolution.split('x').map(Number) : [];
-          const vxShortSide = vxDims.length === 2 ? Math.min(vxDims[0], vxDims[1]) : 'HD';
-
-          mp4Variants.unshift({
-            id: `vid-vx-${i}`,
-            label: isGif ? 'Download GIF (MP4)' : `Download ${vxShortSide}p Max Quality (${vxResolution})`,
-            resolution: vxResolution,
-            bitrate: 9999,
-            ext: 'MP4',
-            url: vxItem.url
-          });
-        }
-
+        // Deduplicate by resolution so each resolution (e.g. 720x1280, 480x852, 320x568) appears once
         const uniqueQualities = [];
-        const seenRes = new Set();
-        mp4Variants.forEach((q, idx) => {
+        const seenResolutions = new Set();
+        mp4Variants.forEach((q) => {
           const cleanUrl = q.url.split('?')[0];
-          const dedupeKey = `${q.resolution}-${cleanUrl}`;
-          if (!seenRes.has(dedupeKey)) {
-            seenRes.add(dedupeKey);
+          const key = q.resolution || cleanUrl;
+          if (!seenResolutions.has(key)) {
+            seenResolutions.add(key);
             uniqueQualities.push({
               ...q,
-              badge: idx === 0 ? 'BEST QUALITY' : null
+              badge: uniqueQualities.length === 0 ? 'HD' : null
             });
           }
         });
 
-        // Also include High-Resolution Video Thumbnail / Cover Photo option
         const thumbRaw =
           synItem?.media_url_https ||
           syndicationData?.video?.poster ||
+          fxItem?.thumbnail_url ||
           vxItem?.thumbnail_url ||
           '';
-        if (thumbRaw) {
-          const baseThumb = normalizeImageBaseUrl(thumbRaw);
-          uniqueQualities.push({
-            id: `vid-thumb-${i}-orig`,
-            label: 'Download Video Cover Thumbnail (HD JPG)',
-            resolution: 'Original Cover',
-            ext: 'JPG',
-            badge: null,
-            url: baseThumb.includes('pbs.twimg.com') ? `${baseThumb}?format=jpg&name=orig` : thumbRaw
-          });
-        }
 
         mediaItems.push({
           index: i,
           type: isGif ? 'gif' : 'video',
           thumbnail: thumbRaw,
-          previewUrl: uniqueQualities[0]?.url || vxItem?.url,
+          previewUrl: uniqueQualities[0]?.url || vxItem?.url || fxItem?.url,
           qualities: uniqueQualities
         });
       } else {
-        const rawImg = synItem?.media_url_https || vxItem?.url;
+        const rawImg = synItem?.media_url_https || fxItem?.url || vxItem?.url;
         const base = normalizeImageBaseUrl(rawImg);
-        const origW = synItem?.original_info?.width || vxItem?.size?.width || 2048;
-        const origH = synItem?.original_info?.height || vxItem?.size?.height || 2048;
+        const origW = synItem?.original_info?.width || fxItem?.width || vxItem?.size?.width || 2048;
+        const origH = synItem?.original_info?.height || fxItem?.height || vxItem?.size?.height || 2048;
 
         const photoQualities = [
           {
@@ -247,7 +269,11 @@ export default function App() {
 
     return {
       id: tweetId,
-      authorHandle: vxData?.user_screen_name || syndicationData?.user?.screen_name || 'twitter',
+      authorHandle:
+        vxData?.user_screen_name ||
+        fxData?.author?.screen_name ||
+        syndicationData?.user?.screen_name ||
+        'twitter',
       mediaItems
     };
   };
