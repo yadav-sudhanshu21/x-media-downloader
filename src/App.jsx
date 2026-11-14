@@ -5,7 +5,9 @@ import {
   AlertCircle,
   Loader2,
   ClipboardPaste,
-  RotateCcw
+  RotateCcw,
+  ShieldCheck,
+  X
 } from 'lucide-react';
 
 function extractTweetId(input) {
@@ -22,15 +24,6 @@ function normalizeImageBaseUrl(rawUrl) {
   return rawUrl.split('?')[0].replace(/\.(jpg|jpeg|png|webp)$/i, '');
 }
 
-// Compute X Syndication Token so single-video posts return all MP4 bitrate variants
-function computeSyndicationToken(idStr) {
-  try {
-    return ((Number(idStr) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '');
-  } catch {
-    return 'a';
-  }
-}
-
 export default function App() {
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +31,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [activeNav, setActiveNav] = useState('Downloader');
+  const [activeModal, setActiveModal] = useState(null); // 'privacy' | 'about' | null
 
   const extractorRef = useRef(null);
   const resultSectionRef = useRef(null);
@@ -47,14 +40,12 @@ export default function App() {
 
   // ==========================================
   // MULTI-SOURCE X / TWITTER ENGINE (Serverless /api/twitter + FXTwitter + VXTwitter)
-  // Extracts all video resolutions (e.g. 720x1280, 480x852, 320x568) in ~120ms
   // ==========================================
   const fetchLiveXMedia = async (tweetId) => {
     let vxData = null;
     let fxData = null;
     let syndicationData = null;
 
-    // 1. Call our fast Vercel backend (/api/twitter) + FXTwitter + VXTwitter in parallel
     const [serverRes, fxRes, vxRes] = await Promise.allSettled([
       fetch(`/api/twitter?id=${tweetId}`),
       fetch(`https://api.fxtwitter.com/status/${tweetId}`),
@@ -112,12 +103,11 @@ export default function App() {
       if (rawType === 'video' || rawType === 'animated_gif' || rawType === 'gif') {
         const isGif = rawType === 'animated_gif' || rawType === 'gif';
 
-        // Collect all variants from Syndication, FXTwitter, and VXTwitter
         const combinedRawVariants = [
           ...(synItem?.video_info?.variants || []),
           ...(syndicationData?.video?.variants || []),
           ...(fxItem?.variants || []),
-          ...( fxItem?.formats || []),
+          ...(fxItem?.formats || []),
           ...(vxItem?.variants || [])
         ];
 
@@ -156,16 +146,13 @@ export default function App() {
                 : '720x1280';
             const resolution = resMatch ? resMatch[1] : fallbackRes;
 
-            // Calculate pixel count so sorting orders 720x1280 -> 480x852 -> 320x568
             const dims = resolution.includes('x') ? resolution.split('x').map(Number) : [0, 0];
             const pixelArea = (dims[0] || 0) * (dims[1] || 0);
             const bitrateKbps = v.bitrate ? Math.round(v.bitrate / 1000) : Math.round(pixelArea / 500) || (4 - idx) * 500;
 
             return {
               id: `vid-${i}-${idx}`,
-              label: isGif
-                ? 'Download GIF: mp4'
-                : `Download ${resolution}: mp4`,
+              label: 'DOWNLOAD',
               resolution,
               pixelArea,
               bitrate: bitrateKbps,
@@ -175,7 +162,6 @@ export default function App() {
           })
           .sort((a, b) => (b.pixelArea - a.pixelArea) || (b.bitrate - a.bitrate));
 
-        // Deduplicate by resolution so each resolution (e.g. 720x1280, 480x852, 320x568) appears once
         const uniqueQualities = [];
         const seenResolutions = new Set();
         mp4Variants.forEach((q) => {
@@ -183,10 +169,7 @@ export default function App() {
           const key = q.resolution || cleanUrl;
           if (!seenResolutions.has(key)) {
             seenResolutions.add(key);
-            uniqueQualities.push({
-              ...q,
-              badge: uniqueQualities.length === 0 ? 'HD' : null
-            });
+            uniqueQualities.push(q);
           }
         });
 
@@ -216,20 +199,18 @@ export default function App() {
         const origW = synItem?.original_info?.width || fxItem?.width || vxItem?.size?.width || 2048;
         const origH = synItem?.original_info?.height || fxItem?.height || vxItem?.size?.height || 2048;
 
-        const bestPhotoQuality = {
-          id: `img-${i}-orig`,
-          label: 'DOWNLOAD',
-          resolution: `${origW}x${origH}`,
-          ext: 'JPG',
-          url: `${base}?format=jpg&name=orig`
-        };
-
         mediaItems.push({
           index: i,
           type: 'photo',
           thumbnail: `${base}?format=jpg&name=large`,
           previewUrl: `${base}?format=jpg&name=large`,
-          bestQuality: bestPhotoQuality
+          bestQuality: {
+            id: `img-${i}-orig`,
+            label: 'DOWNLOAD',
+            resolution: `${origW}x${origH}`,
+            ext: 'JPG',
+            url: `${base}?format=jpg&name=orig`
+          }
         });
       }
     }
@@ -274,7 +255,6 @@ export default function App() {
     }
   };
 
-  // Auto-submit immediately when user pastes a valid X / Twitter link
   const handleInputChange = (e) => {
     const val = e.target.value;
     setUrlInput(val);
@@ -301,10 +281,6 @@ export default function App() {
     }
   };
 
-  // ==========================================
-  // DIRECT BROWSER BLOB DOWNLOADER (100% Working with video.twimg.com & pbs.twimg.com)
-  // Avoids "File wasn't available on site" 404/payload errors by fetching directly from X CDN
-  // ==========================================
   const handleDownloadFile = async (qualityItem) => {
     if (!qualityItem?.url) return;
     setDownloadingId(qualityItem.id);
@@ -363,7 +339,6 @@ export default function App() {
         setDownloadProgress(100);
       }
     } catch (err) {
-      // Fallback: open original file directly if CORS is restricted
       window.open(qualityItem.url, '_blank', 'noopener,noreferrer');
     } finally {
       setTimeout(() => {
@@ -378,8 +353,7 @@ export default function App() {
       {/* ================================================================= */}
       {/* HERO SECTION WITH FERNWOOD DOT MATRIX + SAND BEIGE HORIZON MIST   */}
       {/* ================================================================= */}
-      <section className="relative min-h-[84vh] flex flex-col justify-between overflow-hidden">
-        {/* Subtle Dot Matrix Pattern Overlay */}
+      <section className="relative min-h-[82vh] flex flex-col justify-between overflow-hidden">
         <div
           className="pointer-events-none absolute inset-0 opacity-25"
           style={{
@@ -388,13 +362,11 @@ export default function App() {
           }}
         />
 
-        {/* Subtle Electric Purple Ambient Glow behind headline */}
         <div
           className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[260px] rounded-full blur-[130px] opacity-20"
           style={{ background: '#8B5CF6' }}
         />
 
-        {/* Soft Misty Horizon Fade into Sand Beige at the bottom */}
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-72"
           style={{
@@ -403,8 +375,8 @@ export default function App() {
           }}
         />
 
-        {/* TOP NAVIGATION BAR */}
-        <header className="relative z-20 max-w-7xl w-full mx-auto px-6 pt-7 flex items-center justify-between">
+        {/* CLEAN TOP HEADER (Navigation Pill Removed) */}
+        <header className="relative z-20 max-w-6xl w-full mx-auto px-6 pt-7 flex items-center justify-between">
           <a
             href="#top"
             onClick={(e) => {
@@ -422,33 +394,6 @@ export default function App() {
               X (Twitter) Video Download
             </span>
           </a>
-
-          <nav className="hidden md:flex items-center gap-1 p-1.5 rounded-full bg-[#2E523B]/80 backdrop-blur-md border border-[#E8DCC4]/15 shadow-lg">
-            {['Downloader', 'Video HD', 'Photos 4K', 'GIFs', 'How it works'].map((item) => {
-              const active = activeNav === item;
-              return (
-                <button
-                  key={item}
-                  onClick={() => {
-                    setActiveNav(item);
-                    if (item === 'How it works') {
-                      howItWorksRef.current?.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      extractorRef.current?.scrollIntoView({ behavior: 'smooth' });
-                      inputRef.current?.focus();
-                    }
-                  }}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                    active
-                      ? 'bg-[#E8DCC4]/20 text-[#E8DCC4] shadow-xs'
-                      : 'text-[#E8DCC4]/75 hover:text-[#E8DCC4]'
-                  }`}
-                >
-                  {item}
-                </button>
-              );
-            })}
-          </nav>
 
           <button
             type="button"
@@ -544,7 +489,7 @@ export default function App() {
       </section>
 
       {/* ================================================================= */}
-      {/* SAND BEIGE SURFACE SECTION: CLEAN MEDIA CARDS + ALL QUALITIES     */}
+      {/* SAND BEIGE SURFACE SECTION: MEDIA CARD & WORKFLOW                 */}
       {/* ================================================================= */}
       <main className="bg-[#E8DCC4] text-[#1F3D2B] relative z-20 pb-24 pt-4">
         <div ref={resultSectionRef} className="max-w-5xl mx-auto px-6">
@@ -568,7 +513,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Clean Video or Photo Preview */}
                     <div className="w-full rounded-2xl overflow-hidden bg-black border border-[#E8DCC4]/15 aspect-video max-h-[360px] relative flex items-center justify-center shadow-inner">
                       {mediaItem.type === 'video' || mediaItem.type === 'gif' ? (
                         <video
@@ -589,7 +533,6 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Single Highest Quality Download Button */}
                     {mediaItem.bestQuality && (
                       <div className="mt-4 w-full">
                         <button
@@ -616,7 +559,6 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Download Another Link Reset Button */}
               <div className="mt-6 text-center">
                 <button
                   type="button"
@@ -648,7 +590,7 @@ export default function App() {
                 </h2>
               </div>
               <p className="text-sm text-[#1F3D2B]/75 max-w-md">
-                Original quality without watermark. Save videos, GIFs, and photos in every resolution directly to your device.
+                Original quality without watermark. Save videos, GIFs, and photos in highest resolution directly to your device.
               </p>
             </div>
 
@@ -693,18 +635,186 @@ export default function App() {
         </div>
       </main>
 
-      {/* MINIMAL FOOTER */}
-      <footer className="bg-[#1F3D2B] text-[#E8DCC4]/70 border-t border-[#E8DCC4]/10 py-8 px-6 text-xs">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#8B5CF6]" />
-            <span className="font-semibold text-[#E8DCC4]">X (Twitter) Video Download</span>
+      {/* ================================================================= */}
+      {/* PROFESSIONAL GLOBAL-BRAND FOOTER & AD-READY LEGAL COMPLIANCE      */}
+      {/* ================================================================= */}
+      <footer className="bg-[#1F3D2B] text-[#E8DCC4]/80 border-t border-[#E8DCC4]/15 pt-14 pb-10 px-6 text-xs">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-10 border-b border-[#E8DCC4]/10">
+            {/* Brand & CDN Disclaimer Column */}
+            <div className="md:col-span-6 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
+                <span className="font-bold text-base text-[#E8DCC4]">
+                  X (Twitter) Video Download
+                </span>
+              </div>
+              <p className="text-[#E8DCC4]/65 leading-relaxed max-w-md">
+                X (Twitter) Video Download does not host any pirated or copyright content on its server, and all the videos and photos that you download are downloaded to your system directly from their respective CDN servers.
+              </p>
+              <p className="text-[#E8DCC4]/50 text-[11px]">
+                Built with love. &copy; {new Date().getFullYear()} All rights reserved.
+              </p>
+            </div>
+
+            {/* Links Column */}
+            <div className="md:col-span-3 space-y-2.5">
+              <h4 className="font-bold text-[#E8DCC4] uppercase tracking-wider text-[11px]">
+                Links
+              </h4>
+              <ul className="space-y-2 text-[#E8DCC4]/70">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModal(null);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="hover:text-[#E8DCC4] transition cursor-pointer"
+                  >
+                    Home
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('about')}
+                    className="hover:text-[#E8DCC4] transition cursor-pointer"
+                  >
+                    About
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('privacy')}
+                    className="hover:text-[#E8DCC4] transition cursor-pointer"
+                  >
+                    Privacy Policy
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Related Sites Column (Cross-Links Your Instagram Site!) */}
+            <div className="md:col-span-3 space-y-2.5">
+              <h4 className="font-bold text-[#E8DCC4] uppercase tracking-wider text-[11px]">
+                Related Sites
+              </h4>
+              <ul className="space-y-2 text-[#E8DCC4]/70">
+                <li>
+                  <a
+                    href="https://insta-reel-downloader-five.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#8B5CF6] transition flex items-center gap-1.5"
+                  >
+                    <span>Instagram Reel Downloader</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="text-[#E8DCC4]/55">
-            Independent web utility. Not affiliated with X Corp.
-          </p>
+
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[#E8DCC4]/50 text-[11px]">
+            <span>Independent web utility. Not affiliated with X Corp.</span>
+            <button
+              type="button"
+              onClick={() => setActiveModal('privacy')}
+              className="hover:text-[#E8DCC4] underline transition cursor-pointer"
+            >
+              View Full Privacy Policy &amp; Terms
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* ================================================================= */}
+      {/* CLEAN PRIVACY POLICY & ABOUT MODAL (AdSense / Monetag Compliant)  */}
+      {/* ================================================================= */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#1F3D2B] border border-[#E8DCC4]/25 text-[#E8DCC4] rounded-3xl max-w-2xl w-full max-h-[82vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-[#162D1F] border-b border-[#E8DCC4]/15 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#8B5CF6]" />
+                <h3 className="font-bold text-sm sm:text-base">
+                  {activeModal === 'privacy' ? 'Privacy Policy & Terms of Use' : 'About X (Twitter) Video Download'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="p-1.5 rounded-full hover:bg-[#E8DCC4]/10 text-[#E8DCC4]/70 hover:text-[#E8DCC4] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-[#E8DCC4]/80">
+              {activeModal === 'privacy' ? (
+                <>
+                  <p>
+                    This Privacy Policy governs the manner in which <strong>X (Twitter) Video Download</strong> collects, uses, maintains and discloses information collected from users (each, a &quot;User&quot;) of this website (&quot;Site&quot;).
+                  </p>
+
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Non-personal identification information</h4>
+                  <p>
+                    We may collect non-personal identification information about Users whenever they interact with our Site using analytics tools. Non-personal identification information may include the browser name, the type of computer and technical information about Users&apos; means of connection to our Site, such as the operating system and the Internet service providers utilized and other similar information.
+                  </p>
+
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Web browser cookies</h4>
+                  <p>
+                    Our Site may use &quot;cookies&quot; to enhance User experience. A User&apos;s web browser places cookies on their hard drive for record-keeping purposes and sometimes to track information about them. Users may choose to set their web browser to refuse cookies, or to alert them when cookies are being sent.
+                  </p>
+
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">How we use collected information</h4>
+                  <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                      <strong>To run and operate our Site:</strong> We may need your information to display content on the Site correctly.
+                    </li>
+                    <li>
+                      <strong>To improve customer service:</strong> Information you provide helps us respond to your support needs more efficiently.
+                    </li>
+                    <li>
+                      <strong>To improve our Site:</strong> We may use feedback you provide to improve our products and services.
+                    </li>
+                  </ul>
+
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Copyright &amp; Direct CDN Disclaimer</h4>
+                  <p>
+                    X (Twitter) Video Download does not host any pirated or copyright content on its server, and all the videos and photos that you download are downloaded to your system directly from their respective CDN servers.
+                  </p>
+
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Your acceptance of these terms</h4>
+                  <p>
+                    By using this Site, you signify your acceptance of this policy. If you do not agree to this policy, please do not use our Site. Your continued use of the Site following the posting of changes to this policy will be deemed your acceptance of those changes.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    <strong>X (Twitter) Video Download</strong> is a fast, free online utility designed to help users save public videos, GIFs, and high-resolution photos directly from X (Twitter) in their highest original quality.
+                  </p>
+                  <p>
+                    We do not host or store any media files on our servers. Every file is streamed directly from official content delivery networks (CDNs) to your device with one click.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="px-6 py-3.5 bg-[#162D1F] border-t border-[#E8DCC4]/15 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="px-5 py-2 rounded-full bg-[#8B5CF6] text-white font-semibold text-xs hover:bg-[#7c4dff] transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
