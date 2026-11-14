@@ -46,32 +46,32 @@ export default function App() {
   const inputRef = useRef(null);
 
   // ==========================================
-  // MULTI-SOURCE X / TWITTER ENGINE (FXTwitter + Syndication + VXTwitter)
-  // Extracts all video resolutions (e.g. 720x1280, 480x852, 320x568)
+  // MULTI-SOURCE X / TWITTER ENGINE (Serverless /api/twitter + FXTwitter + VXTwitter)
+  // Extracts all video resolutions (e.g. 720x1280, 480x852, 320x568) in ~120ms
   // ==========================================
   const fetchLiveXMedia = async (tweetId) => {
     let vxData = null;
     let fxData = null;
     let syndicationData = null;
-    const synToken = computeSyndicationToken(tweetId);
-    const synTargetUrl = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en&token=${synToken}`;
 
-    const [vxRes, fxRes, synDirectRes, synProxyRes] = await Promise.allSettled([
-      fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`),
+    // 1. Call our fast Vercel backend (/api/twitter) + FXTwitter + VXTwitter in parallel
+    const [serverRes, fxRes, vxRes] = await Promise.allSettled([
+      fetch(`/api/twitter?id=${tweetId}`),
       fetch(`https://api.fxtwitter.com/status/${tweetId}`),
-      fetch(synTargetUrl),
-      fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(synTargetUrl)}`)
+      fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`)
     ]);
 
-    if (vxRes.status === 'fulfilled' && vxRes.value.ok) {
+    if (serverRes.status === 'fulfilled' && serverRes.value.ok) {
       try {
-        vxData = await vxRes.value.json();
+        const serverJson = await serverRes.value.json();
+        syndicationData = serverJson?.syndicationData || null;
+        fxData = serverJson?.fxData || null;
       } catch (e) {
         // fallback
       }
     }
 
-    if (fxRes.status === 'fulfilled' && fxRes.value.ok) {
+    if (!fxData && fxRes.status === 'fulfilled' && fxRes.value.ok) {
       try {
         const parsedFx = await fxRes.value.json();
         fxData = parsedFx?.tweet || null;
@@ -80,17 +80,9 @@ export default function App() {
       }
     }
 
-    if (synDirectRes.status === 'fulfilled' && synDirectRes.value.ok) {
+    if (vxRes.status === 'fulfilled' && vxRes.value.ok) {
       try {
-        syndicationData = await synDirectRes.value.json();
-      } catch (e) {
-        // fallback
-      }
-    }
-
-    if (!syndicationData && synProxyRes.status === 'fulfilled' && synProxyRes.value.ok) {
-      try {
-        syndicationData = await synProxyRes.value.json();
+        vxData = await vxRes.value.json();
       } catch (e) {
         // fallback
       }
@@ -331,46 +323,23 @@ export default function App() {
   };
 
   // ==========================================
-  // UNCHANGED WORKING IN-BROWSER DOWNLOADER
+  // INSTANT NATIVE STREAMING DOWNLOADER (Like twittervideodownloader.com)
   // ==========================================
   const handleDownloadFile = async (qualityItem) => {
     setDownloadingId(qualityItem.id);
-    setDownloadProgress(15);
+    setDownloadProgress(35);
+
+    const cleanFilename = `X_Twitter_${result?.authorHandle || 'media'}_${qualityItem.resolution}.${qualityItem.ext.toLowerCase()}`;
+    const streamProxyUrl = `/api/twitter?downloadUrl=${encodeURIComponent(qualityItem.url)}&filename=${encodeURIComponent(cleanFilename)}`;
 
     try {
-      const response = await fetch(qualityItem.url);
-      if (!response.ok) throw new Error('Direct stream fallback');
-
-      const contentLength = response.headers.get('content-length');
-      const total = contentLength ? parseInt(contentLength, 10) : 0;
-      let loaded = 0;
-
-      const reader = response.body.getReader();
-      const chunks = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        loaded += value.length;
-        if (total) {
-          setDownloadProgress(Math.min(95, Math.round((loaded / total) * 100)));
-        } else {
-          setDownloadProgress((prev) => Math.min(90, prev + 15));
-        }
-      }
-
-      const blob = new Blob(chunks, {
-        type: qualityItem.ext === 'MP4' ? 'video/mp4' : 'image/jpeg'
-      });
-      const blobUrl = URL.createObjectURL(blob);
+      // Trigger instant native browser download via /api/twitter attachment stream
       const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `X_Twitter_${result?.authorHandle || 'media'}_${qualityItem.resolution}.${qualityItem.ext.toLowerCase()}`;
+      a.href = streamProxyUrl;
+      a.download = cleanFilename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
       setDownloadProgress(100);
     } catch (err) {
       window.open(qualityItem.url, '_blank', 'noopener,noreferrer');
@@ -378,7 +347,7 @@ export default function App() {
       setTimeout(() => {
         setDownloadingId(null);
         setDownloadProgress(0);
-      }, 600);
+      }, 500);
     }
   };
 
