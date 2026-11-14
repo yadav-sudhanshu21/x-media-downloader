@@ -81,7 +81,7 @@ export default function App() {
 
     if (!vxData && !fxData && !syndicationData) {
       throw new Error(
-        'Could not reach this X (Twitter) post. Ensure the post is public and contains video or photo media.'
+        'Could not reach this Twitter post. Ensure the post is public and contains video or photo media.'
       );
     }
 
@@ -216,7 +216,7 @@ export default function App() {
     }
 
     if (mediaItems.length === 0) {
-      throw new Error('This X (Twitter) post does not contain downloadable video or photo media.');
+      throw new Error('This Twitter post does not contain downloadable video or photo media.');
     }
 
     return {
@@ -237,7 +237,7 @@ export default function App() {
 
     const tweetId = extractTweetId(targetUrl);
     if (!tweetId) {
-      setError('Please paste a valid X (Twitter) link (e.g. https://x.com/username/status/123456...)');
+      setError('Please paste a valid Twitter link (e.g. https://x.com/username/status/123456...)');
       return;
     }
 
@@ -249,7 +249,7 @@ export default function App() {
         resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     } catch (err) {
-      setError(err.message || 'Unable to extract media from this X (Twitter) link.');
+      setError(err.message || 'Unable to extract media from this Twitter link.');
     } finally {
       setLoading(false);
     }
@@ -286,7 +286,7 @@ export default function App() {
     setDownloadingId(qualityItem.id);
     setDownloadProgress(15);
 
-    const cleanFilename = `X_Twitter_${result?.authorHandle || 'media'}_${qualityItem.resolution || 'HD'}.${(
+    const cleanFilename = `Free_Twitter_Video_${result?.authorHandle || 'media'}_${qualityItem.resolution || 'HD'}.${(
       qualityItem.ext || 'mp4'
     ).toLowerCase()}`;
 
@@ -375,7 +375,7 @@ export default function App() {
           }}
         />
 
-        {/* CLEAN TOP HEADER (Navigation Pill Removed) */}
+        {/* CLEAN TOP HEADER */}
         <header className="relative z-20 max-w-6xl w-full mx-auto px-6 pt-7 flex items-center justify-between">
           <a
             href="#top"
@@ -391,7 +391,7 @@ export default function App() {
               <Sparkles className="w-3.5 h-3.5 text-[#8B5CF6]" />
             </span>
             <span className="font-bold tracking-tight text-lg text-[#E8DCC4]">
-              X (Twitter) Video Download
+              Free Twitter Video Downloader
             </span>
           </a>
 
@@ -430,7 +430,7 @@ export default function App() {
               type="text"
               value={urlInput}
               onChange={handleInputChange}
-              placeholder="Paste X (Twitter) link here..."
+              placeholder="Paste Twitter link here..."
               className="w-full bg-transparent px-5 py-2.5 text-sm text-[#E8DCC4] placeholder-[#E8DCC4]/45 focus:outline-none"
             />
 
@@ -527,7 +527,7 @@ export default function App() {
                       ) : (
                         <img
                           src={mediaItem.previewUrl}
-                          alt="X (Twitter) media"
+                          alt="Free Twitter Video Download media"
                           className="w-full h-full object-contain"
                         />
                       )}
@@ -586,7 +586,7 @@ export default function App() {
                   → Minimalist Workflow
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1F3D2B] mt-1">
-                  Steps to Download X (Twitter) Videos &amp; Photos.
+                  Steps for Free Twitter Video Download.
                 </h2>
               </div>
               <p className="text-sm text-[#1F3D2B]/75 max-w-md">
@@ -602,7 +602,7 @@ export default function App() {
                 <div>
                   <h3 className="text-lg font-bold text-[#E8DCC4]">Copy Link</h3>
                   <p className="text-xs text-[#E8DCC4]/75 mt-2 leading-relaxed">
-                    Click Share on any public X (Twitter) post and copy the link.
+                    Click Share on any public Twitter post and copy the link.
                   </p>
                 </div>
               </div>
@@ -646,14 +646,14 @@ export default function App() {
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
                 <span className="font-bold text-base text-[#E8DCC4]">
-                  X (Twitter) Video Download
+                  Free Twitter Video Downloader
                 </span>
               </div>
               <p className="text-[#E8DCC4]/65 leading-relaxed max-w-md">
-                X (Twitter) Video Download does not host any pirated or copyright content on its server, and all the videos and photos that you download are downloaded to your system directly from their respective CDN servers.
+                Our platform operates strictly as a client-side media indexing tool. We never store, archive, or host third-party videos or images on our infrastructure—every file is fetched in real time directly from official public content delivery networks (CDNs) to your device.
               </p>
               <p className="text-[#E8DCC4]/50 text-[11px]">
-                Built with love. &copy; {new Date().getFullYear()} All rights reserved.
+                &copy; {new Date().getFullYear()} Free Twitter Video Downloader. All rights reserved.
               </p>
             </div>
 
@@ -739,7 +739,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#8B5CF6]" />
                 <h3 className="font-bold text-sm sm:text-base">
-                  {activeModal === 'privacy' ? 'Privacy Policy & Terms of Use' : 'About X (Twitter) Video Download'}
+                  {activeModal === 'privacy' ? 'Privacy Policy & Terms of Use' : 'About Free Twitter Video Download'}
                 </h3>
               </div>
               <button
@@ -755,49 +755,46 @@ export default function App() {
               {activeModal === 'privacy' ? (
                 <>
                   <p>
-                    This Privacy Policy governs the manner in which <strong>X (Twitter) Video Download</strong> collects, uses, maintains and discloses information collected from users (each, a &quot;User&quot;) of this website (&quot;Site&quot;).
+                    This Privacy &amp; Data Protection Notice explains how <strong>Free Twitter Video Downloader</strong> handles visitor data when you access or use our web application.
                   </p>
 
-                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Non-personal identification information</h4>
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">1. Anonymous Technical Telemetry</h4>
                   <p>
-                    We may collect non-personal identification information about Users whenever they interact with our Site using analytics tools. Non-personal identification information may include the browser name, the type of computer and technical information about Users&apos; means of connection to our Site, such as the operating system and the Internet service providers utilized and other similar information.
+                    We do not require user registration or collect personal identity details. When you visit our website, standard non-identifiable technical metadata—such as device category, browser version, operating system, and general regional analytics—may be processed automatically to maintain server speed and reliability.
                   </p>
 
-                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Web browser cookies</h4>
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">2. Cookies &amp; Advertising Partners</h4>
                   <p>
-                    Our Site may use &quot;cookies&quot; to enhance User experience. A User&apos;s web browser places cookies on their hard drive for record-keeping purposes and sometimes to track information about them. Users may choose to set their web browser to refuse cookies, or to alert them when cookies are being sent.
+                    Our web application may utilize essential browser storage and third-party advertising cookies to keep the service free of charge. You can disable or clear cookies at any time through your browser settings without losing access to our core download tools.
                   </p>
 
-                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">How we use collected information</h4>
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">3. Purpose of Data Processing</h4>
                   <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                      <strong>To run and operate our Site:</strong> We may need your information to display content on the Site correctly.
+                      <strong>Service Delivery:</strong> Processing public post links you submit in real time to locate direct media streams.
                     </li>
                     <li>
-                      <strong>To improve customer service:</strong> Information you provide helps us respond to your support needs more efficiently.
-                    </li>
-                    <li>
-                      <strong>To improve our Site:</strong> We may use feedback you provide to improve our products and services.
+                      <strong>Performance Optimization:</strong> Monitoring error rates and load times to keep media extraction fast across mobile and desktop devices.
                     </li>
                   </ul>
 
-                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Copyright &amp; Direct CDN Disclaimer</h4>
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">4. Intellectual Property &amp; Direct CDN Streaming</h4>
                   <p>
-                    X (Twitter) Video Download does not host any pirated or copyright content on its server, and all the videos and photos that you download are downloaded to your system directly from their respective CDN servers.
+                    We do not host, cache, or redistribute copyrighted media on our servers. All video and photo streams are delivered directly from the original platform&apos;s public CDN servers to the end user&apos;s browser. Users are solely responsible for ensuring they have the right to save and use any downloaded content for personal or authorized purposes.
                   </p>
 
-                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">Your acceptance of these terms</h4>
+                  <h4 className="font-bold text-sm text-[#E8DCC4] pt-2">5. Consent to Terms</h4>
                   <p>
-                    By using this Site, you signify your acceptance of this policy. If you do not agree to this policy, please do not use our Site. Your continued use of the Site following the posting of changes to this policy will be deemed your acceptance of those changes.
+                    By using this web tool, you agree to the practices described in this notice and our terms of service. If you do not agree, please discontinue use of the website.
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    <strong>X (Twitter) Video Download</strong> is a fast, free online utility designed to help users save public videos, GIFs, and high-resolution photos directly from X (Twitter) in their highest original quality.
+                    <strong>Free Twitter Video Downloader</strong> is an independent web utility built to help users save public videos, looping GIFs, and high-resolution images in their original unwatermarked quality.
                   </p>
                   <p>
-                    We do not host or store any media files on our servers. Every file is streamed directly from official content delivery networks (CDNs) to your device with one click.
+                    We never store media on our servers or require account logins—every download streams directly from the source CDN to your device.
                   </p>
                 </>
               )}
