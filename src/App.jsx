@@ -7,7 +7,12 @@ import {
   ClipboardPaste,
   RotateCcw,
   ShieldCheck,
-  X
+  X,
+  ChevronDown,
+  Smartphone,
+  Monitor,
+  CheckCircle2,
+  HelpCircle
 } from 'lucide-react';
 
 function extractTweetId(input) {
@@ -24,6 +29,37 @@ function normalizeImageBaseUrl(rawUrl) {
   return rawUrl.split('?')[0].replace(/\.(jpg|jpeg|png|webp)$/i, '');
 }
 
+const FAQ_ITEMS = [
+  {
+    q: 'Is Free Twitter Video Downloader completely free to use?',
+    a: 'Yes, our tool is 100% free with no hidden subscriptions, daily limits, or registration requirements. You can save as many public Twitter (X) videos, looping GIFs, and high-resolution images as you need.'
+  },
+  {
+    q: 'How do I download Twitter videos on iPhone or iPad (iOS)?',
+    a: 'Open the X (Twitter) app on your iPhone, tap the Share icon beneath the video post, and choose Copy Link. Open Safari or Chrome, visit freetwittervideodownloader.com, tap Paste link, and press Download. The MP4 file will save directly to your iOS Downloads folder, where you can tap "Save Video" to move it to your Photos app.'
+  },
+  {
+    q: 'What video resolution does this downloader provide?',
+    a: 'Our extraction engine automatically inspects every video variant hosted on the official CDN and selects the highest original resolution uploaded by the creator—up to Full HD 1080p MP4 with original audio intact and zero watermarks.'
+  },
+  {
+    q: 'Can I save posts that contain multiple videos or photos?',
+    a: 'Absolutely. If a single Twitter post or thread card contains up to four videos, GIFs, or photos, our tool automatically detects every item in the post and displays individual preview cards with dedicated one-click download buttons.'
+  },
+  {
+    q: 'Why does the tool convert Twitter GIFs into MP4 files?',
+    a: 'Twitter (X) encodes all uploaded animated GIFs as high-efficiency looping MP4 video streams to preserve frame rate and color accuracy. Downloading them in MP4 format ensures smooth playback across all phones, messaging apps, and video editors.'
+  },
+  {
+    q: 'Can I download videos from private or protected accounts?',
+    a: 'No. Out of respect for user privacy and platform security policies, our tool only indexes public posts. Protected tweets or private account media cannot be accessed.'
+  },
+  {
+    q: 'Do you store downloaded videos or track my link history?',
+    a: 'Never. We operate strictly as a real-time client-side media indexer. We do not host or archive copies of any videos on our servers—every file streams directly from Twitter’s public content delivery network (CDN) to your device.'
+  }
+];
+
 export default function App() {
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +68,7 @@ export default function App() {
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [activeModal, setActiveModal] = useState(null); // 'privacy' | 'about' | null
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
   const extractorRef = useRef(null);
   const resultSectionRef = useRef(null);
@@ -489,7 +526,7 @@ export default function App() {
       </section>
 
       {/* ================================================================= */}
-      {/* SAND BEIGE SURFACE SECTION: MEDIA CARD & WORKFLOW                 */}
+      {/* SAND BEIGE SURFACE SECTION: MEDIA CARD, WORKFLOW, SEO GUIDE & FAQ */}
       {/* ================================================================= */}
       <main className="bg-[#E8DCC4] text-[#1F3D2B] relative z-20 pb-24 pt-4">
         <div ref={resultSectionRef} className="max-w-5xl mx-auto px-6">
@@ -632,6 +669,121 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* ================================================================= */}
+          {/* COMPREHENSIVE SEO GUIDE & DEVICE COMPATIBILITY (AdSense Approved) */}
+          {/* ================================================================= */}
+          <section className="mt-20 pt-14 border-t border-[#1F3D2B]/15">
+            <div className="max-w-3xl">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
+                → Complete Platform Guide
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1F3D2B] mt-1">
+                Fast, Lossless Twitter (X) Media Extraction Across Every Device.
+              </h2>
+              <p className="mt-4 text-sm text-[#1F3D2B]/80 leading-relaxed">
+                Twitter (now known as X) hosts millions of breaking news clips, tutorials, sports highlights, and creative animations every day, but the native app does not include a built-in button to save videos offline without a paid subscription. <strong>Free Twitter Video Downloader</strong> bridges that gap with an instant browser-based utility that extracts the raw MP4 video stream directly from official CDN servers.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+              {/* Mobile Guide Card */}
+              <div className="p-7 rounded-3xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/15 space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-[#8B5CF6]" />
+                </div>
+                <h3 className="text-lg font-bold text-[#1F3D2B]">
+                  Saving Videos on iPhone (iOS) &amp; Android
+                </h3>
+                <p className="text-xs text-[#1F3D2B]/80 leading-relaxed">
+                  Whether you use Safari on iPhone or Chrome on Android, our auto-submit clipboard detector eliminates extra taps. Simply copy any public status link from the X app, tap our <strong>Paste link</strong> button, and press <strong>Download</strong>. Your video saves straight to your phone&apos;s Gallery or Files app in its highest available resolution.
+                </p>
+              </div>
+
+              {/* Desktop Guide Card */}
+              <div className="p-7 rounded-3xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/15 space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] flex items-center justify-center">
+                  <Monitor className="w-5 h-5 text-[#8B5CF6]" />
+                </div>
+                <h3 className="text-lg font-bold text-[#1F3D2B]">
+                  Saving Full HD Clips on Windows, Mac &amp; Linux
+                </h3>
+                <p className="text-xs text-[#1F3D2B]/80 leading-relaxed">
+                  On desktop browsers, right-clicking a video on X.com won&apos;t let you save the file because videos are streamed in segmented containers. Pasting the post URL into our tool reconstructs the highest-bitrate single MP4 file—up to 1080p Full HD—along with uncompressed original (`orig`) resolution photos for multi-media tweets.
+                </p>
+              </div>
+            </div>
+
+            {/* Key Features Pill List */}
+            <div className="mt-6 p-7 rounded-3xl bg-[#1F3D2B] text-[#E8DCC4] shadow-xl">
+              <h3 className="text-base font-bold text-[#E8DCC4] mb-4">
+                Why Creators &amp; Researchers Prefer Free Twitter Video Downloader
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs text-[#E8DCC4]/85">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
+                  <span><strong>Automatic Highest Bitrate Selection:</strong> Always grabs the top resolution (`1080p` / `720p` MP4 or `orig` JPG) automatically.</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
+                  <span><strong>Multi-Media Carousel Support:</strong> Extracts all 2, 3, or 4 videos and photos from complex thread posts at once.</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
+                  <span><strong>Zero Watermarks or Re-Encoding:</strong> Delivers the untouched source stream straight from the CDN without quality loss.</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
+                  <span><strong>Instant Auto-Submit Workflow:</strong> Starts loading your preview the moment a valid `x.com` or `twitter.com` link is pasted.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ================================================================= */}
+          {/* INTERACTIVE FAQ ACCORDION SECTION                                 */}
+          {/* ================================================================= */}
+          <section className="mt-16 pt-12 border-t border-[#1F3D2B]/15">
+            <div className="flex items-center gap-2.5 mb-2">
+              <HelpCircle className="w-4 h-4 text-[#8B5CF6]" />
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
+                Frequently Asked Questions
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1F3D2B] mb-8">
+              Everything You Need to Know.
+            </h2>
+
+            <div className="space-y-3">
+              {FAQ_ITEMS.map((item, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] overflow-hidden shadow-md border border-[#1F3D2B]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaqIndex(isOpen ? -1 : idx)}
+                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 hover:bg-[#264934] transition cursor-pointer"
+                    >
+                      <span className="font-bold text-sm text-[#E8DCC4]">{item.q}</span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-[#8B5CF6] shrink-0 transition-transform duration-200 ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="px-6 pb-5 pt-1 text-xs text-[#E8DCC4]/80 leading-relaxed border-t border-[#E8DCC4]/10">
+                        {item.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
       </main>
 
@@ -739,7 +891,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#8B5CF6]" />
                 <h3 className="font-bold text-sm sm:text-base">
-                  {activeModal === 'privacy' ? 'Privacy Policy & Terms of Use' : 'About Free Twitter Video Download'}
+                  {activeModal === 'privacy' ? 'Privacy Policy & Terms of Use' : 'About Free Twitter Video Downloader'}
                 </h3>
               </div>
               <button
