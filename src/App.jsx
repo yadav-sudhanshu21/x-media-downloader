@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Download,
   Sparkles,
@@ -7,12 +7,11 @@ import {
   ClipboardPaste,
   RotateCcw,
   ShieldCheck,
-  X,
   ChevronDown,
   Smartphone,
   Monitor,
   CheckCircle2,
-  HelpCircle
+  X
 } from 'lucide-react';
 
 function extractTweetId(input) {
@@ -29,34 +28,121 @@ function normalizeImageBaseUrl(rawUrl) {
   return rawUrl.split('?')[0].replace(/\.(jpg|jpeg|png|webp)$/i, '');
 }
 
+// ============================================================================
+// ADSTERRA 728x90 LEADERBOARD BANNER (Sandboxed iframe so document.write works)
+// ============================================================================
+function AdsterraBanner728x90() {
+  const bannerHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: transparent;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      atOptions = {
+        'key' : 'f6e4342c1c12c913f09beda1e75ff969',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    </script>
+    <script src="https://bellnewyork.org/22/f6e4342c1c12c913f09beda1e75ff969"></script>
+  </body>
+</html>`;
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center my-8 overflow-x-auto">
+      <span className="text-[10px] uppercase tracking-widest text-[#1F3D2B]/45 mb-1.5 font-medium">
+        Sponsored
+      </span>
+      <div className="w-full max-w-[748px] min-h-[98px] rounded-2xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/10 flex items-center justify-center p-1 overflow-x-auto">
+        <iframe
+          title="Adsterra 728x90 Banner"
+          srcDoc={bannerHtml}
+          width="728"
+          height="90"
+          frameBorder="0"
+          scrolling="no"
+          className="max-w-full"
+          style={{ border: 'none', overflow: 'hidden' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ADSTERRA NATIVE BANNER (4:1 Widget)
+// ============================================================================
+function AdsterraNativeBanner() {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (el.querySelector('script')) return;
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.setAttribute('data-cfasync', 'false');
+    script.src = 'https://bellnewyork.org/21/60906a8bb371ad5d6c177e8efcd14a0e';
+    el.appendChild(script);
+  }, []);
+
+  return (
+    <div className="w-full my-10">
+      <div className="text-center mb-2">
+        <span className="text-[10px] uppercase tracking-widest text-[#1F3D2B]/45 font-medium">
+          Sponsored Recommendations
+        </span>
+      </div>
+      <div
+        ref={containerRef}
+        className="w-full rounded-3xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/10 p-4 min-h-[110px] flex items-center justify-center"
+      >
+        <div id="container-60906a8bb371ad5d6c177e8efcd14a0e" className="w-full" />
+      </div>
+    </div>
+  );
+}
+
 const FAQ_ITEMS = [
   {
     q: 'Is Free Twitter Video Downloader completely free to use?',
-    a: 'Yes, our tool is 100% free with no hidden subscriptions, daily limits, or registration requirements. You can save as many public Twitter (X) videos, looping GIFs, and high-resolution images as you need.'
+    a: 'Yes, our tool is 100% free with no daily download limits, hidden subscriptions, or account registration required. You can save as many public Twitter (X) videos, GIFs, and images as you want.'
   },
   {
-    q: 'How do I download Twitter videos on iPhone or iPad (iOS)?',
-    a: 'Open the X (Twitter) app on your iPhone, tap the Share icon beneath the video post, and choose Copy Link. Open Safari or Chrome, visit freetwittervideodownloader.com, tap Paste link, and press Download. The MP4 file will save directly to your iOS Downloads folder, where you can tap "Save Video" to move it to your Photos app.'
+    q: 'What video quality will be downloaded?',
+    a: 'Our extraction engine automatically inspects every available MP4 bitrate and resolution on the post and selects the highest original resolution uploaded by the creator (up to 1080p Full HD or 4K).'
   },
   {
-    q: 'What video resolution does this downloader provide?',
-    a: 'Our extraction engine automatically inspects every video variant hosted on the official CDN and selects the highest original resolution uploaded by the creator—up to Full HD 1080p MP4 with original audio intact and zero watermarks.'
+    q: 'Does this tool work on iPhone (iOS), Android, and PC?',
+    a: 'Yes! Free Twitter Video Downloader works directly inside Safari, Chrome, Brave, Edge, and Firefox on iPhone, iPad, Android phones, Mac, and Windows PCs without installing any software or extensions.'
   },
   {
-    q: 'Can I save posts that contain multiple videos or photos?',
-    a: 'Absolutely. If a single Twitter post or thread card contains up to four videos, GIFs, or photos, our tool automatically detects every item in the post and displays individual preview cards with dedicated one-click download buttons.'
+    q: 'Can I download videos from private Twitter accounts?',
+    a: 'No. To respect user privacy and platform security, our tool only processes links from public posts. If a post is protected or private, it cannot be accessed.'
   },
   {
-    q: 'Why does the tool convert Twitter GIFs into MP4 files?',
-    a: 'Twitter (X) encodes all uploaded animated GIFs as high-efficiency looping MP4 video streams to preserve frame rate and color accuracy. Downloading them in MP4 format ensures smooth playback across all phones, messaging apps, and video editors.'
+    q: 'Where do my downloaded videos get saved?',
+    a: 'By default, all MP4 videos and JPG photos are saved directly into the "Downloads" folder on your computer or phone, and appear automatically in your mobile gallery or Files app.'
   },
   {
-    q: 'Can I download videos from private or protected accounts?',
-    a: 'No. Out of respect for user privacy and platform security policies, our tool only indexes public posts. Protected tweets or private account media cannot be accessed.'
-  },
-  {
-    q: 'Do you store downloaded videos or track my link history?',
-    a: 'Never. We operate strictly as a real-time client-side media indexer. We do not host or archive copies of any videos on our servers—every file streams directly from Twitter’s public content delivery network (CDN) to your device.'
+    q: 'Do you keep copies of the videos I download?',
+    a: 'Never. We do not host or store any user videos or history on our servers. Every file is streamed directly from official public content delivery networks (CDNs) straight to your browser.'
   }
 ];
 
@@ -67,7 +153,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [activeModal, setActiveModal] = useState(null); // 'privacy' | 'about' | null
+  const [activeModal, setActiveModal] = useState(null);
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
   const extractorRef = useRef(null);
@@ -76,7 +162,7 @@ export default function App() {
   const inputRef = useRef(null);
 
   // ==========================================
-  // MULTI-SOURCE X / TWITTER ENGINE (Serverless /api/twitter + FXTwitter + VXTwitter)
+  // MULTI-SOURCE X / TWITTER ENGINE
   // ==========================================
   const fetchLiveXMedia = async (tweetId) => {
     let vxData = null;
@@ -526,12 +612,12 @@ export default function App() {
       </section>
 
       {/* ================================================================= */}
-      {/* SAND BEIGE SURFACE SECTION: MEDIA CARD, WORKFLOW, SEO GUIDE & FAQ */}
+      {/* SAND BEIGE SURFACE SECTION: MEDIA CARD, ADS, SEO GUIDE & FAQ      */}
       {/* ================================================================= */}
       <main className="bg-[#E8DCC4] text-[#1F3D2B] relative z-20 pb-24 pt-4">
         <div ref={resultSectionRef} className="max-w-5xl mx-auto px-6">
           {result && result.mediaItems?.length > 0 && (
-            <div className="-mt-20 mb-16">
+            <div className="-mt-20 mb-14">
               <div
                 className={`grid gap-6 justify-center ${
                   result.mediaItems.length === 1
@@ -615,8 +701,11 @@ export default function App() {
             </div>
           )}
 
+          {/* TOP ADSTERRA 728x90 BANNER */}
+          <AdsterraBanner728x90 />
+
           {/* HOW IT WORKS — MINIMALIST 3-CARD GRID */}
-          <div ref={howItWorksRef} className="pt-8">
+          <div ref={howItWorksRef} className="pt-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
@@ -670,89 +759,68 @@ export default function App() {
             </div>
           </div>
 
-          {/* ================================================================= */}
-          {/* COMPREHENSIVE SEO GUIDE & DEVICE COMPATIBILITY (AdSense Approved) */}
-          {/* ================================================================= */}
-          <section className="mt-20 pt-14 border-t border-[#1F3D2B]/15">
-            <div className="max-w-3xl">
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
-                → Complete Platform Guide
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1F3D2B] mt-1">
-                Fast, Lossless Twitter (X) Media Extraction Across Every Device.
-              </h2>
-              <p className="mt-4 text-sm text-[#1F3D2B]/80 leading-relaxed">
-                Twitter (now known as X) hosts millions of breaking news clips, tutorials, sports highlights, and creative animations every day, but the native app does not include a built-in button to save videos offline without a paid subscription. <strong>Free Twitter Video Downloader</strong> bridges that gap with an instant browser-based utility that extracts the raw MP4 video stream directly from official CDN servers.
-              </p>
-            </div>
+          {/* ADSTERRA NATIVE 4:1 BANNER */}
+          <AdsterraNativeBanner />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              {/* Mobile Guide Card */}
-              <div className="p-7 rounded-3xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/15 space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] flex items-center justify-center">
-                  <Smartphone className="w-5 h-5 text-[#8B5CF6]" />
-                </div>
-                <h3 className="text-lg font-bold text-[#1F3D2B]">
-                  Saving Videos on iPhone (iOS) &amp; Android
-                </h3>
-                <p className="text-xs text-[#1F3D2B]/80 leading-relaxed">
-                  Whether you use Safari on iPhone or Chrome on Android, our auto-submit clipboard detector eliminates extra taps. Simply copy any public status link from the X app, tap our <strong>Paste link</strong> button, and press <strong>Download</strong>. Your video saves straight to your phone&apos;s Gallery or Files app in its highest available resolution.
-                </p>
+          {/* SEO PLATFORM GUIDE SECTION (AdSense Rich Content Requirement) */}
+          <div className="pt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-7 rounded-3xl bg-[#1F3D2B] text-[#E8DCC4] shadow-lg space-y-4">
+              <div className="flex items-center gap-2.5 text-[#8B5CF6]">
+                <Smartphone className="w-5 h-5" />
+                <span className="text-xs font-bold uppercase tracking-wider">Mobile Guide</span>
               </div>
-
-              {/* Desktop Guide Card */}
-              <div className="p-7 rounded-3xl bg-[#1F3D2B]/5 border border-[#1F3D2B]/15 space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-[#8B5CF6]" />
-                </div>
-                <h3 className="text-lg font-bold text-[#1F3D2B]">
-                  Saving Full HD Clips on Windows, Mac &amp; Linux
-                </h3>
-                <p className="text-xs text-[#1F3D2B]/80 leading-relaxed">
-                  On desktop browsers, right-clicking a video on X.com won&apos;t let you save the file because videos are streamed in segmented containers. Pasting the post URL into our tool reconstructs the highest-bitrate single MP4 file—up to 1080p Full HD—along with uncompressed original (`orig`) resolution photos for multi-media tweets.
-                </p>
-              </div>
-            </div>
-
-            {/* Key Features Pill List */}
-            <div className="mt-6 p-7 rounded-3xl bg-[#1F3D2B] text-[#E8DCC4] shadow-xl">
-              <h3 className="text-base font-bold text-[#E8DCC4] mb-4">
-                Why Creators &amp; Researchers Prefer Free Twitter Video Downloader
+              <h3 className="text-xl font-bold text-[#E8DCC4]">
+                Download Twitter Videos on iPhone &amp; Android
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs text-[#E8DCC4]/85">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
-                  <span><strong>Automatic Highest Bitrate Selection:</strong> Always grabs the top resolution (`1080p` / `720p` MP4 or `orig` JPG) automatically.</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
-                  <span><strong>Multi-Media Carousel Support:</strong> Extracts all 2, 3, or 4 videos and photos from complex thread posts at once.</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
-                  <span><strong>Zero Watermarks or Re-Encoding:</strong> Delivers the untouched source stream straight from the CDN without quality loss.</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0 mt-0.5" />
-                  <span><strong>Instant Auto-Submit Workflow:</strong> Starts loading your preview the moment a valid `x.com` or `twitter.com` link is pasted.</span>
-                </div>
-              </div>
+              <p className="text-xs text-[#E8DCC4]/75 leading-relaxed">
+                Twitter (X) does not provide a built-in button to save videos or GIFs directly to your phone gallery. With <strong>Free Twitter Video Downloader</strong>, open the X app on your iPhone or Android device, tap the <strong>Share</strong> icon beneath any video, and choose <strong>Copy Link</strong>. Paste the link into our box above and tap <strong>Download</strong> to save the unwatermarked MP4 file directly into your Photos or Downloads folder.
+              </p>
+              <ul className="space-y-2 pt-1 text-xs text-[#E8DCC4]/85">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <span>Full HD 1080p &amp; 720p MP4 with original audio</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <span>Converts Twitter looping GIFs to shareable MP4 files</span>
+                </li>
+              </ul>
             </div>
-          </section>
 
-          {/* ================================================================= */}
-          {/* INTERACTIVE FAQ ACCORDION SECTION                                 */}
-          {/* ================================================================= */}
-          <section className="mt-16 pt-12 border-t border-[#1F3D2B]/15">
-            <div className="flex items-center gap-2.5 mb-2">
-              <HelpCircle className="w-4 h-4 text-[#8B5CF6]" />
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
-                Frequently Asked Questions
-              </span>
+            <div className="p-7 rounded-3xl bg-[#1F3D2B] text-[#E8DCC4] shadow-lg space-y-4">
+              <div className="flex items-center gap-2.5 text-[#8B5CF6]">
+                <Monitor className="w-5 h-5" />
+                <span className="text-xs font-bold uppercase tracking-wider">Desktop &amp; Web Utility</span>
+              </div>
+              <h3 className="text-xl font-bold text-[#E8DCC4]">
+                Why Use FreeTwitterVideoDownloader.com?
+              </h3>
+              <p className="text-xs text-[#E8DCC4]/75 leading-relaxed">
+                Most online downloaders compress video bitrates or force you through multiple redirect pages. Our engine connects directly to official public content delivery networks to locate the highest bitrate MP4 variant and uncompressed original (`orig`) image files in milliseconds—with auto-submit on paste so you don&apos;t even have to press an extra button.
+              </p>
+              <ul className="space-y-2 pt-1 text-xs text-[#E8DCC4]/85">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <span>Supports multi-video and multi-photo carousel posts</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#8B5CF6] shrink-0" />
+                  <span>100% free, no watermark, and no account login required</span>
+                </li>
+              </ul>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1F3D2B] mb-8">
-              Everything You Need to Know.
-            </h2>
+          </div>
+
+          {/* INTERACTIVE FAQ ACCORDION */}
+          <div className="pt-14">
+            <div className="mb-8">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#8B5CF6]">
+                → Help &amp; Support
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1F3D2B] mt-1">
+                Frequently Asked Questions.
+              </h2>
+            </div>
 
             <div className="space-y-3">
               {FAQ_ITEMS.map((item, idx) => {
@@ -760,14 +828,16 @@ export default function App() {
                 return (
                   <div
                     key={idx}
-                    className="rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] overflow-hidden shadow-md border border-[#1F3D2B]"
+                    className="rounded-2xl bg-[#1F3D2B] text-[#E8DCC4] border border-[#1F3D2B]/15 overflow-hidden shadow-md"
                   >
                     <button
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? -1 : idx)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 hover:bg-[#264934] transition cursor-pointer"
+                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-[#264934] transition"
                     >
-                      <span className="font-bold text-sm text-[#E8DCC4]">{item.q}</span>
+                      <span className="font-bold text-sm sm:text-base text-[#E8DCC4]">
+                        {item.q}
+                      </span>
                       <ChevronDown
                         className={`w-4 h-4 text-[#8B5CF6] shrink-0 transition-transform duration-200 ${
                           isOpen ? 'rotate-180' : ''
@@ -775,7 +845,7 @@ export default function App() {
                       />
                     </button>
                     {isOpen && (
-                      <div className="px-6 pb-5 pt-1 text-xs text-[#E8DCC4]/80 leading-relaxed border-t border-[#E8DCC4]/10">
+                      <div className="px-6 pb-5 pt-1 text-xs sm:text-sm text-[#E8DCC4]/75 leading-relaxed border-t border-[#E8DCC4]/10">
                         {item.a}
                       </div>
                     )}
@@ -783,7 +853,7 @@ export default function App() {
                 );
               })}
             </div>
-          </section>
+          </div>
         </div>
       </main>
 
@@ -793,7 +863,6 @@ export default function App() {
       <footer className="bg-[#1F3D2B] text-[#E8DCC4]/80 border-t border-[#E8DCC4]/15 pt-14 pb-10 px-6 text-xs">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-10 border-b border-[#E8DCC4]/10">
-            {/* Brand & CDN Disclaimer Column */}
             <div className="md:col-span-6 space-y-3">
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
@@ -809,7 +878,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* Links Column */}
             <div className="md:col-span-3 space-y-2.5">
               <h4 className="font-bold text-[#E8DCC4] uppercase tracking-wider text-[11px]">
                 Links
@@ -848,7 +916,6 @@ export default function App() {
               </ul>
             </div>
 
-            {/* Related Sites Column (Cross-Links Your Instagram Site!) */}
             <div className="md:col-span-3 space-y-2.5">
               <h4 className="font-bold text-[#E8DCC4] uppercase tracking-wider text-[11px]">
                 Related Sites
@@ -882,7 +949,7 @@ export default function App() {
       </footer>
 
       {/* ================================================================= */}
-      {/* CLEAN PRIVACY POLICY & ABOUT MODAL (AdSense / Monetag Compliant)  */}
+      {/* CLEAN PRIVACY POLICY & ABOUT MODAL                                */}
       {/* ================================================================= */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
