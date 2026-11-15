@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://freetwittervideodownloader.com/sitemap.xml
